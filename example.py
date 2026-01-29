@@ -1,4 +1,6 @@
 import pathlib
+import time
+from tracemalloc import start
 from typing_extensions import Final
 import rerun as rr
 import numpy as np
@@ -9,7 +11,7 @@ from rosbags.typesys import Stores, get_typestore
 from point_cloud2 import read_points_numpy
 
 EXAMPLE_DIR: Final = pathlib.Path(__file__).parent
-DATASET_FILE: Final = EXAMPLE_DIR / "eee_02.bag"
+DATASET_FILE: Final = EXAMPLE_DIR / "eee_02_sample.bag"
 
 
 def log_dataset(bagpath: pathlib.Path, static_transforms: bool) -> None:
@@ -83,6 +85,7 @@ def log_dataset(bagpath: pathlib.Path, static_transforms: bool) -> None:
         rr.log(f"world/base_link/lidar_vert",
                rr.Transform3D(translation=b2lv_pos, mat3x3=b2lv_rot), static=True)
 
+    start = time.time()
     with AnyReader([bagpath]) as reader:
         for connection, timestamp, rawdata in reader.messages():
             rr.set_time("time", timestamp=np.datetime64(timestamp, 'ns'))
@@ -110,28 +113,14 @@ def log_dataset(bagpath: pathlib.Path, static_transforms: bool) -> None:
                 msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
                 last_rotation = [msg.orientation.x, msg.orientation.y,
                                  msg.orientation.z, msg.orientation.w]
-            elif connection.topic == '/left/image_raw':
-                msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
-                img_data = np.frombuffer(msg.data, dtype=np.uint8).reshape(
-                    msg.height, msg.width, -1)
-                rr.log("world/base_link/cam_left",
-                       rr.Image(img_data), static=False)
-            elif connection.topic == '/right/image_raw':
-                msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
-                img_data = np.frombuffer(msg.data, dtype=np.uint8).reshape(
-                    msg.height, msg.width, -1)
-                rr.log("world/base_link/cam_right",
-                       rr.Image(img_data), static=False)
             elif connection.topic == '/os1_cloud_node1/points':
                 msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
                 points = read_points_numpy(msg, field_names=["x", "y", "z"])
                 rr.log(f"world/base_link/lidar_hor",
                        rr.Points3D(positions=points, colors=[255, 0, 0]))
-            elif connection.topic == '/os1_cloud_node2/points':
-                msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
-                points = read_points_numpy(msg, field_names=["x", "y", "z"])
-                rr.log(f"world/base_link/lidar_vert",
-                       rr.Points3D(positions=points, colors=[0, 0, 255]))
+
+    end = time.time()
+    print(f"It took: {end - start} seconds")
 
 
 def main() -> None:

@@ -4,7 +4,7 @@ requires-python = ">=3.11"
 version = "0.1.0"
 readme = "README.md"
 dependencies = [
-	"rerun-sdk[datafusion]>=0.28.2",
+	"rerun-sdk[datafusion]>=0.29.0-rc.2",
 	"rosbags"
 ]
 
